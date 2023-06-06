@@ -49,3 +49,13 @@ By default, the port is set to `8888` So, Visit http://localhost:8888 in your br
 Rest of the work app will do on it's own.
 
 You can refer to the Demo Video for help: https://www.youtube.com/watch?v=qQyN2ij6IG8
+
+### Areas where it can improve
+
+- Using Typescript for development, would make the development process faster and safer
+- We can implement a Queue to keep track of the emails for pending replies, in case if the server crashes.
+- Running Auto-Reply program in some scheduled time.
+- Usage of AI to compose better replies.
+- UI for customers
+- The code itself can be refactored into different modules, using .env for environment variables, and 3rd party packages like nodemailer, axios
+- logging logs, handling async operations in try-catch blocks, and implementing unique edge cases
