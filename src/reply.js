@@ -1,15 +1,15 @@
 import addLabel from "./addLabel.js";
 
-async function reply(gmail, id) {
+async function reply(gmail, id, replyBody) {
     // the gmail-api endpoint to get the single message using ID with metadata included
     const details = await gmail.users.messages.get({
         id: id,
         userId: 'me',
         format: 'metadata',
     });
-
     const originalMessage = details.data;
     const originalHeaders = originalMessage.payload.headers;
+    console.log(originalHeaders);
 
     /*
     * finding Required Headers in the headers Array, to compose the reply
@@ -37,7 +37,7 @@ async function reply(gmail, id) {
     // adding Re: to the subject if not present
     const replySubject = originalSubject.startsWith('Re:') ? originalSubject : `Re: ${originalSubject}`;
     // the actual message which will be sent to the receiver
-    const replyBody = 'Hey, Sorry to inform you but i am on vacation right now! Would reply ASAP';
+    // const replyBody = 'Hey, Sorry to inform you but i am on vacation right now! Would reply ASAP';
 
     /*
     * as discussed above these are the headers we need to send in reply, 
