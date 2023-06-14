@@ -14,7 +14,7 @@ const userSchema = new Schema({
     },
     replied_total: {
         type: Number,
-        default: 0
+        default: 33
     }
 });
 

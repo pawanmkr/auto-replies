@@ -4,15 +4,17 @@ import { google } from 'googleapis';
 import { OAuth2Client } from 'google-auth-library';
 import reply from './reply.js';
 import { WebSocket, WebSocketServer } from "ws";
-import bcrypt from 'bcrypt';
-import jwt from 'jsonwebtoken';
 import dotenv from 'dotenv';
 import User from './models/user.js';
 import mongoose from 'mongoose';
+import path from 'path';
+// import router from "./routes.js";
+// import broadcast from './websocket.js';
 
-dotenv.config();
+dotenv.config({
+  path: path.join(process.cwd(), '.env')
+});
 const port = process.env.PORT || 8888;
-const jwt_secret = process.env.JWT_SECRET_KEY;
 
 const app = express();
 app.use(morgan('tiny'));
@@ -27,10 +29,12 @@ app.use(function (req, res, next) {
   next();
 });
 
-const server = app.listen(port, () => console.log(`Application running on PORT:${port}`));
+// app.use('/api/v1', router);
+
+export const server = app.listen(port, () => console.log(`Application running on PORT:${port}`));
 const wss = new WebSocketServer({ server });
 
-mongoose.connect('mongodb+srv://pawan:mint@automail.kfm6mu6.mongodb.net/test?retryWrites=true&w=majority', {
+mongoose.connect(process.env.MONGO_DB_STRING, {
   useNewUrlParser: true,
   useUnifiedTopology: true
 })
@@ -50,49 +54,27 @@ const broadcast = (data) => {
   });
 };
 
-function generateToken(user) {
-  console.log("generating jwt token...");
-  const payload = {
-    user_id: user._id,
-    email: user.email
-  };
-  const token = jwt.sign(payload, jwt_secret, { expiresIn: '1h' });
-  return token;
-}
-function generateStrongPassword(email, access_token) {
-  console.log("generating strong password...");
-  const password = email + access_token;
-  return password;
-}
-
 app.post('/api/v1/user/login', async (req, res) => {
   const { first_name, last_name, email, access_token } = req.body;
+  // todo: server-side validation with access_token is pending yet
 
   const existingUser = await User.findOne({ email });
   if (existingUser) {
     console.log("user already exists");
-    const token = generateToken(existingUser);
-    console.log("sending jwt token to client...");
-    return res.json({ token });
+    return res.json({ token: access_token });
   }
   const newUser = new User({
     first_name,
     last_name,
     email
   });
-  const password = generateStrongPassword(email, access_token);
-
-  const saltRounds = 10;
-  const hashedPassword = await bcrypt.hash(password, saltRounds);
-  newUser.password = hashedPassword;
-
-  const saved = await newUser.save();
-  if (saved) {
-    console.log("new user added to db");
-  }
-  const token = generateToken(newUser);
-  console.log("sending jwt token to client...");
-  res.json({ token });
+  await newUser
+    .save()
+    .then((result) => {
+      console.log("New User Saved: ", result);
+    })
+    .catch(error => console.error(error.message));
+  res.json({ token: access_token });
 });
 
 const filterMessages = async (gmail, gmailResponse, res) => {
@@ -112,22 +94,8 @@ const filterMessages = async (gmail, gmailResponse, res) => {
       id: message,
       userId: 'me',
     });
+    console.log(email)
     email = email.data;
-
-    /* // using lable:inbox
-    if (email.data.labelIds.includes('INBOX')) {
-      filteredMessages.push(message);
-    } */
-
-    /* const isReply = headers.find(header => header.name === 'In-Reply-To')
-    console.log(isReply); */
-    // both if statements are doing same thing
-    /* 
-      if (isReply && isReply !== undefined) {
-        filteredMessages.push(message);
-      } 
-    */
-
     if (email.id === email.threadId) {
       filteredMessages.add(email.id);
     }
@@ -157,7 +125,7 @@ app.post('/api/v1/mails/count', async (req, res) => {
   const oauth2Client = new OAuth2Client();
   oauth2Client.setCredentials(credentials);
   const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-
+  // todo: check for automail label also to skip those which are earlier replied by automail
   const gmailResponse = await gmail.users.messages.list({
     userId: 'me',
     q: 'is:unread -category:{promotions} -category:{updates} -category:{forums} -category:{social} -is:snoozed -is:chat'
@@ -165,16 +133,23 @@ app.post('/api/v1/mails/count', async (req, res) => {
   await filterMessages(gmail, gmailResponse, res);
 });
 
+async function verify(client) {
+  const tokenInfo = await client.getTokenInfo(
+    client.credentials.access_token
+  );
+  return tokenInfo.email;
+}
+
 app.post('/api/v1/mails/reply', async (req, res) => {
   const { credentials, messages, replyMsg } = req.body;
-  const oauth2Client = new OAuth2Client();
-  oauth2Client.setCredentials(credentials);
-  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const client = new OAuth2Client();
+  client.setCredentials(credentials);
+  const email = await verify(client).catch(console.error);
+  const gmail = google.gmail({ version: 'v1', auth: client });
   // the promises array to store all the promises(mails which are to be replied)
   const promises = [];
   let count = 0; // count, just to check the progress
 
-  console.log(messages);
   for (const message of messages) {
     const delay = Math.floor(Math.random() * (60 - 25 + 1)) + 25;
     // here is the fun part, resolving all the replies with random delays
@@ -185,18 +160,34 @@ app.post('/api/v1/mails/reply', async (req, res) => {
         console.log(count++);
         broadcast({ count: count });
         resolve(replyResult);
-      }, delay * 500);
+      }, delay * 300);
     });
     // pushing into the promises array earlier we created
     promises.push(promise);
   }
-  const response = await Promise.all(promises);
-  res.send(response);
+  await Promise.all(promises);
+  await User.findOne({ email: email })
+    .then(async (user) => {
+      if (user) {
+        await User.updateOne({ email: email }, { replied_total: user.replied_total + count })
+          .then(
+            res.send({
+              message: "Successfully replied to all your mails!",
+              totalReplied: user.replied_total + count
+            })
+          )
+      }
+    })
+    .catch(error => console.error(error.message))
 });
 
 wss.on('connection', (ws) => {
   console.log('WebSocket client connected.');
-
   // Send a welcome message to the connected client
   ws.send(JSON.stringify({ message: 'Connected to WebSocket server.' }));
+});
+
+app.post('/api/v1/reply/option', async (req, res) => {
+  const { option, credentials } = req.body;
+
 });

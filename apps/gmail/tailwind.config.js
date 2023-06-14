@@ -7,6 +7,7 @@ export const theme = {
     colors: {
       'matte-blue': '#454d66',
       'matte-blue1': '#313954',
+      'matte-gray': '#292929'
     },
   },
 };

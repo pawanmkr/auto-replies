@@ -7,17 +7,17 @@ const Login = () => {
   const navigate = useNavigate();
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      let response, user, loginToken;
+      let unread, user, loginToken;
       try {
         // get count of unread mails
-        response = await axios({
+        unread = await axios({
           method: "post",
           url: "http://localhost:8888/api/v1/mails/count",
           data: {
             credentials: tokenResponse,
           },
         });
-        response = response.data;
+        unread = unread.data;
       } catch (error) {
         console.error("Error logging @google: ", error);
       }
@@ -35,29 +35,38 @@ const Login = () => {
       } catch (error) {
         console.error("error getting profile");
       }
-      try {
-        // automail server login request
-        loginToken = await axios({
-          method: "post",
-          url: "http://localhost:8888/api/v1/user/login",
-          data: {
-            access_token: tokenResponse.access_token,
-            first_name: user.given_name,
-            last_name: user.family_name,
-            email: user.email,
-          },
-        });
-        loginToken = loginToken.data;
-      } catch (error) {
-        console.error("Error logging in server: ", error);
-      }
+
+      // automail server login request
+      await axios
+        .post(`${import.meta.env.VITE_LOCAL_SERVER}/api/v1/user/login`, {
+          // todo: send token in headers this is not a good practice
+          access_token: tokenResponse.access_token,
+          first_name: user.given_name,
+          last_name: user.family_name,
+          email: user.email,
+        })
+        .catch((error) => console.error(error.message));
+
       // navigating to dashboard page with needed data
-      navigate("/dashboard", { state: { response, tokenResponse, user } });
+      navigate("/dashboard", { state: { unread, tokenResponse, user } });
     },
   });
 
+  /* const backendLogin = async () => {
+    try {
+      let login = await axios({
+        method: "post",
+        url: "http://localhost:8888/api/v1/backend/login",
+      });
+      login = login.data;
+      console.log(login);
+    } catch (error) {
+      console.error("Error logging in server: ", error);
+    }
+  }; */
+
   return (
-    <div className="btn-container font-source-sans-3 bg-gray-300 rounded p-3 hover:bg-black hover:text-gray-300">
+    <div className="btn-container font-source-sans-3 bg-matte-gray rounded p-3 hover:bg-black text-gray-300">
       <button
         type="button"
         className="flex justify-center items-center text-4xl"

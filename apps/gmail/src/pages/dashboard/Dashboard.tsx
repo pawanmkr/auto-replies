@@ -1,20 +1,20 @@
 import Stats from "../../components/Stats/Stats";
 import Sidebar from "../../components/Sidebar/Sidebar";
-// import dp from "../../assets/icons/google-48.svg";
 import Other from "../../components/other/Other";
 import { useLocation } from "react-router-dom";
 import ReplyMessage from "../../components/ReplyMessage";
 import { useState } from "react";
+import axios from "axios";
 
 const Dashboard = () => {
   const location = useLocation();
   let mailCount = 0,
     messages = [];
-  const response = location.state.response.data;
+  const unread = location.state.unread.data;
 
-  if (response !== null) {
-    mailCount = response.count;
-    messages = response.messages;
+  if (unread !== null) {
+    mailCount = unread.count;
+    messages = unread.messages;
   }
   const tokenResponse = location.state.tokenResponse;
   const profile = {
@@ -23,7 +23,7 @@ const Dashboard = () => {
     email: location.state.user.email,
   };
 
-  const options = [
+  const [options, setOptions] = useState([
     {
       label: "Vacation",
       value: "I am on vacation, will reply after 30th June",
@@ -34,14 +34,43 @@ const Dashboard = () => {
       value:
         "i am enjoying my weekend will see your application in office hours",
     },
-  ];
+  ]);
   const [selectedValue, setSelectedValue] = useState(options[0].value);
+  const [optionLabel, setOptionLabel] = useState("");
+  const [optionValue, setOptionValue] = useState("");
   const handleOptionChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setSelectedValue(event.target.value);
   };
 
+  async function saveOptionOnServer(option: object) {
+    // todo: send access_token in headers, sending in body is not a good practice
+    await axios
+      .post(`${import.meta.env.VITE_LOCAL_SERVER}/api/v1/reply/option`, {
+        option,
+        access_token: tokenResponse.access_token,
+      })
+      .then((result) => {
+        console.log(result);
+      })
+      .catch((err) => {
+        console.error(
+          `Error occurred while saving option on server: ${err.message}`
+        );
+      });
+  }
+
+  const saveOption = async () => {
+    // edge case not handled yet: keep the label unique it is used as key
+    const option = {
+      label: optionLabel,
+      value: optionValue,
+    };
+    await saveOptionOnServer(option);
+    setOptions([...options, option]);
+  };
+  const [totalReplied, setTotalReplied] = useState(0);
+
   const data = {
-    mailCount,
     messages,
     tokenResponse,
     selectedValue,
@@ -51,13 +80,16 @@ const Dashboard = () => {
     <div className="dashboard-container flex bg-gray-200">
       <Sidebar profile={profile} />
       <div className="content mt-8 flex flex-col items-center w-full h-[50vh] justify-between">
-        <Stats count={mailCount} />
+        <Stats mailCount={mailCount} totalReplied={totalReplied} />
         <ReplyMessage
           options={options}
           handleOptionChange={handleOptionChange}
           value={selectedValue}
+          saveOption={saveOption}
+          setOptionLabel={setOptionLabel}
+          setOptionValue={setOptionValue}
         />
-        <Other data={data} />
+        <Other data={data} setTotalReplied={setTotalReplied} />
       </div>
     </div>
   );
