@@ -7,7 +7,7 @@ const Login = () => {
   const navigate = useNavigate();
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
-      let unread, user, loginToken;
+      let unread, user;
       try {
         // get count of unread mails
         unread = await axios({
@@ -51,19 +51,6 @@ const Login = () => {
       navigate("/dashboard", { state: { unread, tokenResponse, user } });
     },
   });
-
-  /* const backendLogin = async () => {
-    try {
-      let login = await axios({
-        method: "post",
-        url: "http://localhost:8888/api/v1/backend/login",
-      });
-      login = login.data;
-      console.log(login);
-    } catch (error) {
-      console.error("Error logging in server: ", error);
-    }
-  }; */
 
   return (
     <div className="btn-container font-source-sans-3 bg-matte-gray rounded p-3 hover:bg-black text-gray-300">

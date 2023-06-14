@@ -3,7 +3,16 @@
 import axios from "axios";
 import { useState } from "react";
 
-const Other = ({ data, setTotalReplied }) => {
+interface OtherProps {
+  data: {
+    selectedValue: string;
+    messages: string[];
+    tokenResponse: object;
+  };
+  setTotalReplied: React.Dispatch<React.SetStateAction<number>>;
+}
+
+const Other = ({ data, setTotalReplied }: OtherProps) => {
   const [isProcessing, setIsProcessing] = useState(false);
 
   const startReplying = async () => {

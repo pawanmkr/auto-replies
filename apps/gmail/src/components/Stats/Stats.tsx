@@ -5,7 +5,12 @@ import useWebSocket from "react-use-websocket";
 
 const socketUrl = import.meta.env.VITE_WS_SERVER;
 
-const Stats = ({ mailCount, totalReplied }) => {
+interface StartProps {
+  mailCount: number;
+  totalReplied: number;
+}
+
+const Stats = ({ mailCount, totalReplied }: StartProps) => {
   const [count, setCount] = useState(mailCount);
   const { lastMessage } = useWebSocket(socketUrl);
   const [repliedMails, setRepliedMails] = useState(0);
