@@ -12,7 +12,7 @@ const Login = () => {
         // get count of unread mails
         unread = await axios({
           method: "post",
-          url: "http://localhost:8888/api/v1/mails/count",
+          url: `${import.meta.env.VITE_SERVER}/api/v1/mails/count`,
           data: {
             credentials: tokenResponse,
           },
@@ -25,7 +25,7 @@ const Login = () => {
       try {
         user = await axios({
           method: "get",
-          url: "https://www.googleapis.com/oauth2/v1/userinfo",
+          url: `https://www.googleapis.com/oauth2/v1/userinfo`,
           headers: {
             Authorization: `Bearer ${tokenResponse.access_token}`,
             Accept: "application/json",
@@ -38,7 +38,7 @@ const Login = () => {
 
       // automail server login request
       await axios
-        .post(`${import.meta.env.VITE_LOCAL_SERVER}/api/v1/user/login`, {
+        .post(`${import.meta.env.VITE_SERVER}/api/v1/user/login`, {
           // todo: send token in headers this is not a good practice
           access_token: tokenResponse.access_token,
           first_name: user.given_name,

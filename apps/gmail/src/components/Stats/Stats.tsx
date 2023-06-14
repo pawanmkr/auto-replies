@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import useWebSocket from "react-use-websocket";
 
-const socketUrl = "ws://localhost:8888";
+const socketUrl = import.meta.env.VITE_WS_SERVER;
 
 const Stats = ({ mailCount, totalReplied }) => {
   const [count, setCount] = useState(mailCount);

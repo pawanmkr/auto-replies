@@ -45,7 +45,7 @@ const Dashboard = () => {
   async function saveOptionOnServer(option: object) {
     // todo: send access_token in headers, sending in body is not a good practice
     await axios
-      .post(`${import.meta.env.VITE_LOCAL_SERVER}/api/v1/reply/option`, {
+      .post(`${import.meta.env.VITE_SERVER}/api/v1/reply/option`, {
         option,
         access_token: tokenResponse.access_token,
       })

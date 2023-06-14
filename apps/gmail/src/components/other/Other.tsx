@@ -11,7 +11,7 @@ const Other = ({ data, setTotalReplied }) => {
     try {
       const response = await axios({
         method: "post",
-        url: "http://localhost:8888/api/v1/mails/reply",
+        url: `${import.meta.env.VITE_SERVER}/api/v1/mails/reply`,
         data: {
           credentials: data.tokenResponse,
           messages: data.messages,
