@@ -8,14 +8,7 @@ import axios from "axios";
 
 const Dashboard = () => {
   const location = useLocation();
-  let mailCount = 0,
-    messages = [];
-  const unread = location.state.unread.data;
-
-  if (unread !== null) {
-    mailCount = unread.count;
-    messages = unread.messages;
-  }
+  const { count, total, messages } = location.state.unread.data;
   const tokenResponse = location.state.tokenResponse;
   const profile = {
     dp: location.state.user.picture,
@@ -68,7 +61,7 @@ const Dashboard = () => {
     await saveOptionOnServer(option);
     setOptions([...options, option]);
   };
-  const [totalReplied, setTotalReplied] = useState(0);
+  const [totalReplied, setTotalReplied] = useState(total);
 
   const data = {
     messages,
@@ -80,7 +73,7 @@ const Dashboard = () => {
     <div className="dashboard-container flex bg-gray-200">
       <Sidebar profile={profile} />
       <div className="content mt-8 flex flex-col items-center w-full h-[50vh] justify-between">
-        <Stats mailCount={mailCount} totalReplied={totalReplied} />
+        <Stats mailCount={count} totalReplied={totalReplied} />
         <ReplyMessage
           options={options}
           handleOptionChange={handleOptionChange}

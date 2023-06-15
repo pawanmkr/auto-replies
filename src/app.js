@@ -77,10 +77,16 @@ app.post('/api/v1/user/login', async (req, res) => {
   res.json({ token: access_token });
 });
 
-const filterMessages = async (gmail, gmailResponse, res) => {
+const filterMessages = async (gmail, gmailResponse, res, totalReplied) => {
   // when 0 unread mails
   if (gmailResponse.data.resultSizeEstimate === 0) {
-    res.send({ data: null });
+    res.send({
+      data: {
+        count: 0,
+        total: totalReplied,
+        messages: []
+      }
+    });
     return;
   }
   const messages = gmailResponse.data.messages.map(message => { return message.id })
@@ -115,6 +121,7 @@ const filterMessages = async (gmail, gmailResponse, res) => {
   res.send({
     data: {
       count: filteredMessages.length,
+      total: totalReplied,
       messages: filteredMessages,
     }
   })
@@ -122,15 +129,24 @@ const filterMessages = async (gmail, gmailResponse, res) => {
 
 app.post('/api/v1/mails/count', async (req, res) => {
   const credentials = req.body.credentials;
-  const oauth2Client = new OAuth2Client();
-  oauth2Client.setCredentials(credentials);
-  const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
+  const client = new OAuth2Client();
+  client.setCredentials(credentials);
+  const email = await verify(client).catch(console.error);
+  const gmail = google.gmail({ version: 'v1', auth: client });
   // todo: check for automail label also to skip those which are earlier replied by automail
   const gmailResponse = await gmail.users.messages.list({
     userId: 'me',
     q: 'is:unread -category:{promotions} -category:{updates} -category:{forums} -category:{social} -is:snoozed -is:chat'
   });
-  await filterMessages(gmail, gmailResponse, res);
+  let totalReplied = 0;
+  await User.findOne({ email: email })
+    .then(user => {
+      if (user) {
+        totalReplied = user.replied_total;
+      }
+    })
+    .catch(error => console.error(error.message))
+  await filterMessages(gmail, gmailResponse, res, totalReplied);
 });
 
 async function verify(client) {
